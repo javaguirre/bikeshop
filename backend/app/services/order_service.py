@@ -23,11 +23,11 @@ class OrderService:
         :param new_option_id: ID of the new option being added
         :return: Updated dict of selected options
         """
-        product = self.db.query(Product).get(product_id)
+        product = self.db.get(Product, product_id)
         if not product:
             raise ValueError(f"Product with id {product_id} not found")
 
-        new_option = self.db.query(Option).get(new_option_id)
+        new_option = self.db.get(Option, new_option_id)
         if not new_option:
             raise ValueError(f"Option with id {new_option_id} not found")
 
@@ -42,7 +42,7 @@ class OrderService:
         # Check if the new option is compatible with currently selected options
         for part_id, option_id in current_options.items():
             if not self._are_options_compatible(option_id, new_option_id):
-                current_option = self.db.query(Option).get(option_id)
+                current_option = self.db.get(Option, option_id)
                 raise ValueError(
                     f"Option {new_option.name} is not compatible with {current_option.name}"
                 )
@@ -77,7 +77,7 @@ class OrderService:
         self, current_options: Dict[int, int], new_part_id: int, new_option_id: int
     ):
         """Check specific business rules."""
-        new_option = self.db.query(Option).get(new_option_id)
+        new_option = self.db.get(Option, new_option_id)
 
         # Rule: If "mountain wheels" are selected, only full suspension frame is allowed
         if new_option.name == "mountain wheels":
@@ -94,7 +94,7 @@ class OrderService:
             rim_color_part_id = self._get_part_id_by_name("Rim color")
             rim_color_option_id = current_options.get(rim_color_part_id)
             if rim_color_option_id:
-                rim_color_option = self.db.query(Option).get(rim_color_option_id)
+                rim_color_option = self.db.get(Option, rim_color_option_id)
                 if rim_color_option.name == "Red":
                     raise ValueError(
                         "Red rim color is not available with fat bike wheels"
@@ -117,7 +117,7 @@ class OrderService:
         :param current_options: Dict of currently selected options {part_id: option_id}
         :return: Dict of available options for each part {part_id: [Option]}
         """
-        product = self.db.query(Product).get(product_id)
+        product = self.db.get(Product, product_id)
         if not product:
             raise ValueError(f"Product with id {product_id} not found")
 

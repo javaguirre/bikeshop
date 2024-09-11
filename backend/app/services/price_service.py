@@ -18,7 +18,7 @@ class PricingService:
         :return: Final price
         """
         # Get base price of the product
-        product = self.db.query(Product).get(product_id)
+        product = self.db.get(Product, product_id)
         if not product:
             raise ValueError(f"Product with id {product_id} not found")
 
@@ -26,7 +26,7 @@ class PricingService:
 
         # Add prices of selected options
         for part_id, option_id in selected_options.items():
-            option = self.db.query(Option).get(option_id)
+            option = self.db.get(Option, option_id)
             if not option:
                 raise ValueError(f"Option with id {option_id} not found")
             total_price += option.base_price
@@ -73,7 +73,7 @@ class PricingService:
         :param option_id: ID of the option
         :return: Price of the option
         """
-        option: Option | None = self.db.query(Option).get(option_id)
+        option = self.db.get(Option, option_id)
         if not option:
             raise ValueError(f"Option with id {option_id} not found")
         return option.base_price
