@@ -1,4 +1,3 @@
-from fastapi.background import P
 from sqlalchemy import (
     Boolean,
     Column,
@@ -16,7 +15,6 @@ from sqlalchemy.sql import func
 
 from backend.app.models.base import Base
 
-# Product Categories (Many-to-Many)
 product_categories = Table(
     "product_categories",
     Base.metadata,
@@ -40,7 +38,6 @@ class Product(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(255), nullable=False)
     description = Column(Text)
-    base_price = Column(Numeric(10, 2), nullable=False)
 
     categories = relationship(
         "Category", secondary=product_categories, back_populates="products"

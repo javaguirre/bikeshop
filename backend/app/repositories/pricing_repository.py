@@ -2,12 +2,21 @@ from typing import List
 from sqlalchemy import Column
 from sqlalchemy.orm import Session
 
-from backend.app.models.product import Option, PriceRule, PriceRuleCondition, Product
+from backend.app.models.product import (
+    Option,
+    OptionCompatibility,
+    Order,
+    PriceRule,
+    Product,
+)
 
 
-class PricingOrderRepository(OrderRepository, PricingRepository):
+class PricingOrderRepository:
     def __init__(self, db: Session):
         self.db = db
+
+    def get_order(self, order_id: int):
+        return self.db.query(Order).filter(Order.id == order_id).first()
 
     def get_product(self, product_id: int):
         return self.db.query(Product).filter(Product.id == product_id).first()
@@ -23,3 +32,22 @@ class PricingOrderRepository(OrderRepository, PricingRepository):
 
     def get_price_rule_by_option_id(self, option_id: Column[int]) -> List[PriceRule]:
         return self.db.query(PriceRule).filter(PriceRule.option_id == option_id).all()
+
+    def get_price_rules_by_option_ids(self, option_ids: list[int]) -> List[PriceRule]:
+        return (
+            self.db.query(PriceRule).filter(PriceRule.option_id.in_(option_ids)).all()
+        )
+
+    def get_options(self) -> List[Option]:
+        # TODO: What about the product_id?
+        return self.db.query(Option).filter(Option.in_stock).all()
+
+    def get_option_compatibilities(
+        self, options: list[Option]
+    ) -> List[OptionCompatibility]:
+        option_ids = [option.id for option in options]
+        return (
+            self.db.query(OptionCompatibility)
+            .filter(OptionCompatibility.option_id.in_(option_ids))
+            .all()
+        )

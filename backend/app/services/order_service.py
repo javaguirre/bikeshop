@@ -1,76 +1,114 @@
-from functools import reduce
+from typing import List
+from sqlalchemy.sql.schema import Column
+from backend.app.models.product import Order
 from backend.app.repositories.pricing_repository import PricingOrderRepository
-from ..models.product import Option, PriceRule
+from ..models.product import Option, OptionCompatibility, PriceRule
 
 
 class OrderService:
     def __init__(self, repository: PricingOrderRepository):
         self.repository = repository
 
-    def calculate_price(self, order_id: int, option_id: int) -> float:
+    def calculate_price(self, order: Order) -> float:
         """
         Calculate the price of an option based on the current order and the new option.
         """
-
-        # TODO Check the new part is valid with the current other options
-        current_order = self.repository.get_order(order_id)
-
-        return reduce(
-            lambda x, y: x + y, map(self.get_valid_price, current_order.options)
+        current_option_ids = [option.id for option in order.options]
+        rules: list[PriceRule] = self.repository.get_price_rules_by_option_ids(
+            current_option_ids
         )
 
-    def get_valid_price(self, option: Option) -> float:
+        return self._calculate_price_by_options(order.options, rules)
+
+    def get_available_options(self, order: Order) -> list[Option]:
+        """
+        Get the available options for the current order.
+        """
+        options: List[Option] = self.repository.get_options()
+        conditions: List[OptionCompatibility] = (
+            self.repository.get_option_compatibilities(options)
+        )
+
+        return list(
+            filter(
+                lambda option: self._is_valid_option_with_current_order(
+                    order.options, conditions, option
+                ),
+                options,
+            )
+        )
+
+    def _calculate_price_by_options(
+        self, options: list[Option], rules: list[PriceRule]
+    ) -> float:
+        total_price = 0
+        current_option_ids: list[Column[int]] = [option.id for option in options]
+
+        for option in options:
+            if not self._has_rules(option, rules):
+                total_price += option.price
+                continue
+            total_price += self._get_valid_price(option, rules, current_option_ids)
+
+        return total_price
+
+    def _has_rules(self, option: Option, rules: list[PriceRule]):
+        return any(rule.option_id == option.id for rule in rules)
+
+    def _get_valid_price(
+        self, option: Option, rules: list[PriceRule], current_option_ids
+    ) -> float:
         """
         Get the valid price of an option based on the current order and the new option.
         """
+        return self._get_price_with_rules(option, rules, current_option_ids)
 
-        rules: list[PriceRule] = self.repository.get_price_rule_by_option_id(option.id)
-
-        if not rules:
-            return option.price
-
-        return self.get_price_with_rules(option, rules)
-
-    def get_price_with_rules(self, option: Option, rules: list[PriceRule]) -> float:
-        # TODO: How to get this here?
-        current_option_ids = [option.id for option in current_options]
-
+    def _get_price_with_rules(
+        self, option: Option, rules: list[PriceRule], current_option_ids: list[int]
+    ) -> float:
         for rule in rules:
             current_rule_condition_option_ids = [
                 condition.option_id for condition in rule.conditions
             ]
 
-            # TODO: What if we have a rule with more than these conditions? (e.g. [p1, p2] vs [p1, p2, p3])
+            # We get the first rule that matches
             if current_rule_condition_option_ids in current_option_ids:
                 return rule.price
 
         return option.price
 
-    def validate_part(self, order_id: int, option_id: int) -> bool:
-        """
-        Validate if a new part can be added to the current configuration.
-        """
-        current_order = self.repository.get_order(order_id)
-        current_options = current_order.options
+    def _is_valid_option_with_current_order(
+        self,
+        order_options: list[Option],
+        conditions: list[OptionCompatibility],
+        option: Option,
+    ):
+        for option in order_options:
+            option_conditions: List[OptionCompatibility] = (
+                self._get_option_compatibitilies(option, conditions)
+            )
 
-        current_option_ids: list[int] = [option.id for option in current_options]
+            if not option_conditions:
+                return True
 
-        conditions = self.repository.get_conditions_by_option_id(option_id)
-
-        # TODO: Check
-        for condition in conditions:
-            if condition.include_exclude == "exclude":
-                if any(
-                    option.id in current_option_ids
-                    for option in condition.compatible_options
-                ):
-                    return False
             else:
-                # TODO: This is wrong
-                if not any(
-                    option.id in current_option_ids
-                    for option in condition.compatible_options
-                ):
-                    return False
+                return self._is_option_compatible_with_order(
+                    option, option_conditions, order_options
+                )
 
-        return True
+    def _get_option_compatibitilies(
+        self, option: Option, compatibilities: list[OptionCompatibility]
+    ) -> List[OptionCompatibility]:
+        return [
+            compatibility
+            for compatibility in compatibilities
+            if compatibility.option_id == option.id
+        ]
+
+    def _is_option_compatible_with_order(
+        self,
+        option: Option,
+        compatibilities: list[OptionCompatibility],
+        order_options: list[Option],
+    ):
+        pass

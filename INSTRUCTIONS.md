@@ -47,21 +47,53 @@ This code exercise consists of defining a software architecture that could satis
 
 1 - Data model: What data model would be best to support this application? Could you describe it? Include table specifications (or documents if it's a non-relational database) with fields, their associations, and the meaning of each entity.
 
-
+# TODO: Describe data model
 
 2 - The description of the main user actions in this e-commerce website. Explain how they would work in detail.
 
 3 - The product page: This would be a read operation, performed when you need to display the page of a product (a bicycle) for the customer to purchase. How would you present this UI? How would you calculate which options are available or not? How would you calculate the price depending on the customer's selections?
 
+- Show the different parts of the bicycle and the possible choices for each part.
+- When selecting an option on a part, the order will be updated and the available options will come from the calculation of the order and the price.
+- The price of the order will be calculated based on the selected options and the pricing rules.
+- The available options will be calculated based on the selected options and the availability/compatibility of the options.
+
 4 - The "add to cart" action: Following the previous point, the product page should have a button to "add to cart" after the customer has made some specific selection. What happens when the customer clicks this button? What is persisted in the database?
+
+
+- Based on the order information that we updated every time the order is updated, we will mark the order as "placed". The caveat is that we might be persisting orders than after will be discarded, but the good thing about this approach is that we could follow up the order if it's not completed with thecustomer if he/she has any issue and give us a phone/email.
+
 
 5 - The description of the main workflows from the administration part of the website, where Marcus configures the store.
 
+- We need three main modules:
+  - Product creation module: Here we will be able to create a new product with its parts and the possible choices for each part.
+  - Choice Compatibility module: Here we will be able to modify the compatibity options a specific option has with others.
+  - Pricing module: Here we will be able to set the pricing rule (if any) for each option.
+
+We will show if a specific option has compatibility rules and/or price rules in the overview of the product in the admin page.
+
 6 - The creation of a new product: What information is required to create a new product? What changes in the database after performing this action?
+
+A new product needs to have, at least, a name and a description, a category, a part and an option for that part.
+
+We will have:
+
+- a new Product row
+- a new Part row
+- a new Option row
+
+# TODO How would we present this form??
+
 
 7 - The addition of a new part choice: How can Marcus introduce a new rim color, for example? Can you describe the UI? What changes in the database after this action?
 
+He would go to the admin page, product view, then will go to the Rim part link and add a new option for that part, specifying the name, description and price. Then He could add a price rule for this option too if needed be.
+
 8 - Setting up prices: How can Marcus change the price of a specific part (like the diamond frame type) or specify that some combinations of choices have particular prices? How does the UI look? How does the database change to store this information?
 
+He would go to the admin page, product view, then will go to the Frame part link and modify the base price for that part.
 
-We expect you to provide the main core model of the solution: a set of classes/functions/modules in the language of your choice that can describe the main relationships between entities and any supporting materials you find useful (database schemas, diagrams, etc). Please make it as lightweight as possible: no need to use web frameworks or provide the finished solution, the goal is to see how you model and code the domain logic.
+I He wants to set a specific price rule or rules for that part, he could add/ edit the ones that are already there, selecting the part and option related to the rule and then setting a price. He could do this several times if he wants more than one rule for this specific option.
+
+---

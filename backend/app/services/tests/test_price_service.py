@@ -11,8 +11,6 @@ from backend.app.models.product import (
     PriceRuleCondition,
     Product,
 )
-from backend.app.repositories.pricing_repository import PricingRepository
-from backend.app.services.price_service import PricingService
 
 
 @pytest.fixture(scope="module")
