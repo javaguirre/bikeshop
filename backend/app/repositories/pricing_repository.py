@@ -57,9 +57,12 @@ class PricingOrderRepository:
             self.db.query(PriceRule).filter(PriceRule.option_id.in_(option_ids)).all()
         )
 
-    def get_options(self) -> List[Option]:
-        # TODO: What about the product_id?
-        return self.db.query(Option).filter(Option.in_stock).all()
+    def get_options(self, product_id: int) -> List[Option]:
+        return (
+            self.db.query(Option)
+            .filter(Option.in_stock, Option.product_id == product_id)
+            .all()
+        )
 
     def get_option_compatibilities(
         self, options: list[Option]

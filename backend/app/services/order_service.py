@@ -11,21 +11,11 @@ class OrderService:
     def __init__(self, repository: PricingOrderRepository):
         self.repository = repository
 
-    def create_order(self, product_id: int) -> OrderResponse:
-        product: Product | None = self.repository.get_product(product_id)
-        if not product:
-            raise ValueError("Product not found")
-
+    def create_order(self, product: Product) -> OrderResponse:
         order: Order = self.repository.create_order(Order(product=product))
-        options: List[Option] = self.repository.get_options()
-        conditions: List[OptionCompatibility] = (
-            self.repository.get_option_compatibilities(options)
-        )
 
         total_price = 0
-        available_options: List[Option] = self.get_available_options(
-            order, options, conditions
-        )
+        available_options: List[Option] = self.repository.get_options(product.id)
 
         return OrderResponse(
             order=order, total_price=total_price, available_options=available_options
@@ -35,7 +25,7 @@ class OrderService:
         order: Order = self.repository.get_order(order_id)
         option: Option = self.repository.get_option(option_id)
 
-        options: List[Option] = self.repository.get_options()
+        options: List[Option] = self.repository.get_options(order.product_id)
         conditions: List[OptionCompatibility] = (
             self.repository.get_option_compatibilities(options)
         )
@@ -90,6 +80,7 @@ class OrderService:
             if not self._has_rules(option, rules):
                 total_price += option.price
                 continue
+
             total_price += self._get_valid_price(option, rules, current_option_ids)
 
         return total_price
@@ -172,13 +163,13 @@ class OrderService:
         for compatibility in option_compatibilities:
             # In this case the part_id should have a specific option_id which is compatible_option_id
             if compatibility.include_exclude == "include":
-                part_ids = [
+                option_part_ids = [
                     order_option.id
                     for order_option in order_options
                     if order_option.part_id == compatibility.part_id
                 ]
 
-                if compatibility.compatible_option_id not in part_ids:
+                if compatibility.compatible_option_id not in option_part_ids:
                     return False
             elif (
                 compatibility.include_exclude == "exclude"
@@ -193,7 +184,14 @@ class OrderService:
         ]
 
         for compatibility in part_compatibilities:
-            # TODO
-            pass
-
-        return False
+            if (
+                compatibility.compatible_option_id == option.id
+                and compatibility.include_exclude == "exclude"
+            ):
+                return False
+            elif (
+                compatibility.include_exclude == "include"
+                and compatibility.compatible_option_id != option.id
+            ):
+                return False
+        return True
