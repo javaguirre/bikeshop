@@ -153,45 +153,20 @@ class OrderService:
         compatibilities: list[OptionCompatibility],
         order_options: list[Option],
     ):
-        option_compatibilities = [
-            compatibility
-            for compatibility in compatibilities
-            if compatibility.option_id == option.id
-        ]
-        order_option_ids = [option.id for option in order_options]
+        order_option_ids = {opt.id for opt in order_options}
 
-        for compatibility in option_compatibilities:
-            # In this case the part_id should have a specific option_id which is compatible_option_id
-            if compatibility.include_exclude == "include":
-                option_part_ids = [
-                    order_option.id
-                    for order_option in order_options
-                    if order_option.part_id == compatibility.part_id
-                ]
-
-                if compatibility.compatible_option_id not in option_part_ids:
+        for compatibility in compatibilities:
+            if compatibility.option_id == option.id:
+                if compatibility.include_exclude == "include":
+                    if compatibility.compatible_option_id not in order_option_ids:
+                        return False
+                elif compatibility.compatible_option_id in order_option_ids:
                     return False
-            elif (
-                compatibility.include_exclude == "exclude"
-                and compatibility.compatible_option_id in order_option_ids
-            ):
-                return False
+            elif compatibility.part_id == option.part_id:
+                if compatibility.include_exclude == "exclude":
+                    if compatibility.compatible_option_id == option.id:
+                        return False
+                elif compatibility.compatible_option_id != option.id:
+                    return False
 
-        part_compatibilities = [
-            compatibility
-            for compatibility in compatibilities
-            if compatibility.part_id == option.part_id
-        ]
-
-        for compatibility in part_compatibilities:
-            if (
-                compatibility.compatible_option_id == option.id
-                and compatibility.include_exclude == "exclude"
-            ):
-                return False
-            elif (
-                compatibility.include_exclude == "include"
-                and compatibility.compatible_option_id != option.id
-            ):
-                return False
         return True
