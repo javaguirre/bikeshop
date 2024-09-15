@@ -1,5 +1,5 @@
+from fastapi.background import P
 from sqlalchemy import (
-    JSON,
     Boolean,
     Column,
     DateTime,
@@ -46,8 +46,6 @@ class Product(Base):
         "Category", secondary=product_categories, back_populates="products"
     )
     parts = relationship("Part", secondary=product_parts, back_populates="products")
-    price_rules = relationship("PriceRule", back_populates="product")
-    order_items = relationship("OrderItem", back_populates="product")
 
 
 class Category(Base):
@@ -72,7 +70,6 @@ class Part(Base):
     options = relationship("Option", back_populates="part")
 
 
-# Options (e.g., Full-suspension, Road wheels, Single-speed chain)
 class Option(Base):
     __tablename__ = "options"
 
@@ -106,19 +103,19 @@ class OptionCompatibility(Base):
 
     option_id = Column(Integer, ForeignKey("options.id"), primary_key=True)
     compatible_option_id = Column(Integer, ForeignKey("options.id"), primary_key=True)
+    include_exclude = Column(
+        Enum("include", "exclude"), nullable=False, default="include"
+    )
 
 
 class PriceRule(Base):
     __tablename__ = "price_rules"
 
     id = Column(Integer, primary_key=True)
-    product_id = Column(Integer, ForeignKey("products.id"))
-    rule_type = Column(
-        Enum("combination", "dependency", name="rule_types"), nullable=False
-    )
-    price_adjustment = Column(Numeric(10, 2), nullable=False)
+    option_id = Column(Integer, ForeignKey("products.id"))
+    # TODO: We could add a rule type
+    price = Column(Numeric(10, 2), nullable=False)
 
-    product = relationship("Product", back_populates="price_rules")
     conditions = relationship("PriceRuleCondition", back_populates="price_rule")
 
 
@@ -127,11 +124,9 @@ class PriceRuleCondition(Base):
 
     id = Column(Integer, primary_key=True)
     price_rule_id = Column(Integer, ForeignKey("price_rules.id"))
-    part_id = Column(Integer, ForeignKey("parts.id"))
     option_id = Column(Integer, ForeignKey("options.id"))
 
     price_rule = relationship("PriceRule", back_populates="conditions")
-    part = relationship("Part")
     option = relationship("Option")
 
 
@@ -142,7 +137,9 @@ class Order(Base):
     customer_id = Column(Integer)  # Assuming a customers table exists
     order_date = Column(DateTime, default=func.now())
     total_price = Column(Numeric(10, 2), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id"))
 
+    product = relationship("Product", back_populates="orders")
     order_items = relationship("OrderItem", back_populates="order")
 
 
@@ -150,11 +147,8 @@ class OrderItem(Base):
     __tablename__ = "order_items"
 
     id = Column(Integer, primary_key=True)
+    option_id = Column(Integer, ForeignKey("options.id"))
     order_id = Column(Integer, ForeignKey("orders.id"))
-    product_id = Column(Integer, ForeignKey("products.id"))
-    quantity = Column(Integer, nullable=False)
-    price = Column(Numeric(10, 2), nullable=False)
-    options = Column(JSON, nullable=False)
 
+    option = relationship("Option", back_populates="order_items")
     order = relationship("Order", back_populates="order_items")
-    product = relationship("Product", back_populates="order_items")

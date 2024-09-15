@@ -8,7 +8,7 @@ class ProductService:
         self.db = db
 
     def create_product(self, product: ProductCreate):
-        db_product = Product(**product.dict())
+        db_product = Product(**product.model_dump())
         self.db.add(db_product)
         self.db.commit()
         self.db.refresh(db_product)
