@@ -1,13 +1,58 @@
 from typing import List
 from sqlalchemy.sql.schema import Column
-from backend.app.models.product import Order
+from backend.app.api.orders import OrderResponse
+from backend.app.models.product import Order, Product
 from backend.app.repositories.pricing_repository import PricingOrderRepository
 from ..models.product import Option, OptionCompatibility, PriceRule
 
 
+# TODO: Interface
 class OrderService:
     def __init__(self, repository: PricingOrderRepository):
         self.repository = repository
+
+    def create_order(self, product_id: int) -> OrderResponse:
+        product: Product | None = self.repository.get_product(product_id)
+        if not product:
+            raise ValueError("Product not found")
+
+        order: Order = self.repository.create_order(Order(product=product))
+        options: List[Option] = self.repository.get_options()
+        conditions: List[OptionCompatibility] = (
+            self.repository.get_option_compatibilities(options)
+        )
+
+        total_price = 0
+        available_options: List[Option] = self.get_available_options(
+            order, options, conditions
+        )
+
+        return OrderResponse(
+            order=order, total_price=total_price, available_options=available_options
+        )
+
+    def update_order(self, order_id: int, option_id: int) -> OrderResponse:
+        order: Order = self.repository.get_order(order_id)
+        option: Option = self.repository.get_option(option_id)
+
+        options: List[Option] = self.repository.get_options()
+        conditions: List[OptionCompatibility] = (
+            self.repository.get_option_compatibilities(options)
+        )
+
+        if not self._is_valid_option_with_current_order(
+            order.options, conditions, option
+        ):
+            raise ValueError("Option is not compatible with the order")
+
+        total_price: float = self.calculate_price(order)
+        available_options: List[Option] = self.get_available_options(
+            order, options, conditions
+        )
+
+        return OrderResponse(
+            order=order, total_price=total_price, available_options=available_options
+        )
 
     def calculate_price(self, order: Order) -> float:
         """
@@ -20,15 +65,12 @@ class OrderService:
 
         return self._calculate_price_by_options(order.options, rules)
 
-    def get_available_options(self, order: Order) -> list[Option]:
+    def get_available_options(
+        self, order: Order, options: list[Option], conditions: list[OptionCompatibility]
+    ) -> list[Option]:
         """
         Get the available options for the current order.
         """
-        options: List[Option] = self.repository.get_options()
-        conditions: List[OptionCompatibility] = (
-            self.repository.get_option_compatibilities(options)
-        )
-
         return list(
             filter(
                 lambda option: self._is_valid_option_with_current_order(
@@ -99,11 +141,20 @@ class OrderService:
     def _get_option_compatibitilies(
         self, option: Option, compatibilities: list[OptionCompatibility]
     ) -> List[OptionCompatibility]:
-        return [
+        option_compatibilities: List[OptionCompatibility] = [
             compatibility
             for compatibility in compatibilities
             if compatibility.option_id == option.id
         ]
+
+        # If a part from this option has other compatibilities, we need to check them
+        option_compatibilities += [
+            compatibility
+            for compatibility in compatibilities
+            if compatibility.part_id == option.part_id
+        ]
+
+        return option_compatibilities
 
     def _is_option_compatible_with_order(
         self,
@@ -111,4 +162,38 @@ class OrderService:
         compatibilities: list[OptionCompatibility],
         order_options: list[Option],
     ):
-        pass
+        option_compatibilities = [
+            compatibility
+            for compatibility in compatibilities
+            if compatibility.option_id == option.id
+        ]
+        order_option_ids = [option.id for option in order_options]
+
+        for compatibility in option_compatibilities:
+            # In this case the part_id should have a specific option_id which is compatible_option_id
+            if compatibility.include_exclude == "include":
+                part_ids = [
+                    order_option.id
+                    for order_option in order_options
+                    if order_option.part_id == compatibility.part_id
+                ]
+
+                if compatibility.compatible_option_id not in part_ids:
+                    return False
+            elif (
+                compatibility.include_exclude == "exclude"
+                and compatibility.compatible_option_id in order_option_ids
+            ):
+                return False
+
+        part_compatibilities = [
+            compatibility
+            for compatibility in compatibilities
+            if compatibility.part_id == option.part_id
+        ]
+
+        for compatibility in part_compatibilities:
+            # TODO
+            pass
+
+        return False

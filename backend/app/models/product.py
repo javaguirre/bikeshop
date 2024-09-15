@@ -99,6 +99,7 @@ class OptionCompatibility(Base):
     __tablename__ = "option_compatibility"
 
     option_id = Column(Integer, ForeignKey("options.id"), primary_key=True)
+    part_id = Column(Integer, ForeignKey("parts.id"), primary_key=True)
     compatible_option_id = Column(Integer, ForeignKey("options.id"), primary_key=True)
     include_exclude = Column(
         Enum("include", "exclude"), nullable=False, default="include"

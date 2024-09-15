@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.app.models.base import get_db
@@ -31,7 +31,11 @@ def create_product(
 ):
     repository = PricingOrderRepository(db)
     order_service = OrderService(repository)
-    return order_service.create_order(payload.product_id)
+
+    try:
+        return order_service.create_order(payload.product_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.put("/orders/{order_id}", response_model=Order)
@@ -40,4 +44,8 @@ def update_order(
 ):
     repository = PricingOrderRepository(db)
     order_service = OrderService(repository)
-    return order_service.update_order(order_id)
+
+    try:
+        return order_service.update_order(order_id, payload.option_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

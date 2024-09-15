@@ -3,8 +3,6 @@
 # TODO:
 
 Add interfaces for the services
-Add Repositories
-Change model names
 organize models in different files
 
 ## User Stories
