@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.app.api import orders, products
+from backend.app.api import orders, parts, products
 from backend.app.models import Base, engine
 
 app = FastAPI()
@@ -18,6 +18,7 @@ Base.metadata.create_all(bind=engine)
 
 app.include_router(products.router)
 app.include_router(orders.router)
+app.include_router(parts.router)
 
 
 @app.get("/")

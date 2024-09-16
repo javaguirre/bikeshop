@@ -1,27 +1,24 @@
 import { useRouter } from 'next/router'
 import { useState, useEffect } from 'react'
-import { getProduct } from '../../services/api'
+import { getParts, getProduct } from '../../services/api'
 import Link from 'next/link'
+import { Part } from '../../types'
 
-interface Product {
-  id: string
-  name: string
-  description: string
-  price: number
-}
+const TEST_PRODUCT_ID = 1
 
-export default function ProductPage() {
+export default function CartPage() {
   const router = useRouter()
   const { id } = router.query
-  const [product, setProduct] = useState<Product | null>(null)
+  const [parts, setParts] = useState<Part[] | null>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function fetchProducts() {
-      const data = await getProduct(Number(id))
+      const data = await getParts(Number(TEST_PRODUCT_ID))
       if (data) {
         setLoading(false)
-        setProduct(data)
+        console.log(data)
+        setParts(data)
       }
     }
     fetchProducts()
@@ -31,14 +28,14 @@ export default function ProductPage() {
     return <div>Loading...</div>
   }
 
-  if (!product) {
-    return <div>Product not found</div>
+  if (!parts) {
+    return <div>Parts not found</div>
   }
 
   return (
     <div>
-      <h1>{product.name}</h1>
-      <p>{product.description}</p>
+      <h1>PARTS</h1>
+      <p>{}</p>
 
       <Link href="/cart">Customize</Link>
     </div>
