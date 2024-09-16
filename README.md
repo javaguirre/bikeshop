@@ -1,9 +1,16 @@
 # Bike Shop
 
+# Testing:
+
+```bash
+PYTHONPATH=. pytest --cov
+```
+
 # TODO:
 
 Add interfaces for the services
 organize models in different files
+Control the rules aren't incongruent, adding constraints when the admin adds new rules and compatibility options
 
 ## User Stories
 

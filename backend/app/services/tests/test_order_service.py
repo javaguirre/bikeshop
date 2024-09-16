@@ -1,14 +1,23 @@
+from decimal import Decimal
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from backend.app.models import Base
-from backend.app.models.product import Option, OptionCompatibility, Part, Product
+from backend.app.models.product import (
+    Option,
+    OptionCompatibility,
+    Order,
+    Part,
+    PriceRule,
+    PriceRuleCondition,
+    Product,
+)
 from backend.app.services.order_service import OrderService
 
 
 # Setup test database
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def db_session():
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
@@ -16,7 +25,7 @@ def db_session():
     session = Session()
 
     # Create test data
-    product = Product(id=1, name="Test Bike", base_price=100)
+    product = Product(id=1, name="Test Bike")
     session.add(product)
 
     parts = [
@@ -40,17 +49,25 @@ def db_session():
     ]
     session.add_all(options)
 
+    rule = PriceRule(id=1, option_id=7, price=30)
+    session.add(rule)
+    conditions = [
+        PriceRuleCondition(price_rule_id=1, option_id=1),
+        PriceRuleCondition(price_rule_id=1, option_id=4),
+    ]
+    session.add_all(conditions)
+
     # Add compatibility rules
     compatibilities = [
         OptionCompatibility(
-            option_id=1, compatible_option_id=4
-        ),  # Full-suspension compatible with Mountain wheels
+            option_id=1, compatible_option_id=4, include_exclude="include"
+        ),
         OptionCompatibility(
-            option_id=2, compatible_option_id=3
-        ),  # Diamond frame compatible with Road wheels
+            option_id=2, compatible_option_id=3, include_exclude="exclude"
+        ),
         OptionCompatibility(
-            option_id=5, compatible_option_id=7
-        ),  # Fat bike wheels compatible with Black rim color
+            option_id=5, compatible_option_id=7, include_exclude="include"
+        ),
     ]
     session.add_all(compatibilities)
 
@@ -66,92 +83,102 @@ def order_service(db_session):
     return OrderService(db_session)
 
 
-def test_validate_and_add_part_valid(order_service):
-    current_options = {1: 1}  # Full-suspension frame
-    updated_options = order_service.validate_and_add_part(
-        1, current_options, 2, 4
-    )  # Add Mountain wheels
-    assert updated_options == {1: 1, 2: 4}
+def test_create_order(order_service, db_session):
+    product = db_session.query(Product).first()
+    response = order_service.create_order(product)
+
+    assert response.order_id is not None
+    assert response.total_price == 0
+    assert len(response.available_options) > 0
 
 
-def test_validate_and_add_part_incompatible(order_service):
-    current_options = {1: 2}  # Diamond frame
-    with pytest.raises(
-        ValueError, match="Option Mountain wheels is not compatible with Diamond"
-    ):
-        order_service.validate_and_add_part(
-            1, current_options, 2, 4
-        )  # Try to add Mountain wheels
-
-
-def test_validate_and_add_part_out_of_stock(order_service, db_session):
-    db_session.query(Option).filter_by(id=3).update({"in_stock": False})
+def test_update_order_valid_option(order_service, db_session):
+    product = db_session.query(Product).first()
+    order = Order(product=product, total_price=0)  # Set initial total_price
+    db_session.add(order)
     db_session.commit()
-    current_options = {1: 2}  # Diamond frame
-    with pytest.raises(ValueError, match="Option Road wheels is out of stock"):
-        order_service.validate_and_add_part(
-            1, current_options, 2, 3
-        )  # Try to add out-of-stock Road wheels
+
+    full_suspension = db_session.query(Option).filter_by(name="Full-suspension").first()
+    response = order_service.update_order(order, full_suspension)
+
+    assert response.id == order.id
+    assert response.total_price == 130
+    assert len(response.available_options) > 0
 
 
-def test_validate_and_add_part_specific_rule_mountain_wheels(order_service):
-    current_options = {1: 2}  # Diamond frame
-    with pytest.raises(ValueError) as exc_info:
-        order_service.validate_and_add_part(
-            1, current_options, 2, 4
-        )  # Try to add Mountain wheels
-    assert "Option Mountain wheels is not compatible with Diamond" in str(
-        exc_info.value
-    )
+def test_update_order_incompatible_option(order_service, db_session):
+    product = db_session.query(Product).first()
+    order = Order(product=product, total_price=0)  # Set initial total_price
+    db_session.add(order)
+    db_session.commit()
+
+    full_suspension = db_session.query(Option).filter_by(name="Full-suspension").first()
+    order_service.update_order(order, full_suspension)
+
+    road_wheels = db_session.query(Option).filter_by(name="Road wheels").first()
+
+    with pytest.raises(ValueError, match="Option is not compatible with the order"):
+        order_service.update_order(order, road_wheels)
 
 
-def test_validate_and_add_part_specific_rule_fat_bike_wheels(order_service):
-    current_options = {1: 1, 2: 5, 3: 6}  # Full-suspension, Fat bike wheels, Red rim
-    with pytest.raises(ValueError) as exc_info:
-        order_service.validate_and_add_part(
-            1, current_options, 3, 6
-        )  # Try to add Red rim color
-    assert "Option Red is not compatible with Full-suspension" in str(exc_info.value)
+def test_calculate_price_basic(order_service, db_session):
+    product = db_session.query(Product).first()
+    order = Order(product=product, total_price=0)
+    db_session.add(order)
+    db_session.commit()
+
+    full_suspension = db_session.query(Option).filter_by(name="Full-suspension").first()
+    mountain_wheels = db_session.query(Option).filter_by(name="Mountain wheels").first()
+    black_rim = db_session.query(Option).filter_by(name="Black").first()
+
+    order.options.extend([full_suspension, mountain_wheels, black_rim])
+    db_session.commit()
+
+    total_price = order_service.calculate_price(order)
+    assert total_price == 260  # 130 + 100 + 30 (price rule for black rim)
 
 
-def test_get_available_options(order_service):
-    current_options = {1: 1}  # Full-suspension frame
-    available_options = order_service.get_available_options(1, current_options)
-    print("Available options:", available_options)
+def test_get_available_options(order_service, db_session):
+    product = db_session.query(Product).first()
+    order = Order(product=product, total_price=0)
+    db_session.add(order)
+    db_session.commit()
 
-    assert len(available_options) > 0, "No available options returned"
+    full_suspension = db_session.query(Option).filter_by(name="Full-suspension").first()
+    order.options.append(full_suspension)
+    db_session.commit()
 
-    for part_id, options in available_options.items():
-        print(f"Part {part_id} options: {[option.id for option in options]}")
+    options = db_session.query(Option).all()
+    conditions = db_session.query(OptionCompatibility).all()
 
-    # Check if Mountain wheels (id 4) is available for any part
-    assert any(
-        any(option.id == 4 for option in options)
-        for options in available_options.values()
-    ), "Mountain wheels (id 4) not found in available options"
+    available_options = order_service.get_available_options(order, options, conditions)
 
-
-def test_get_available_options_empty_current_options(order_service):
-    available_options = order_service.get_available_options(1, {})
-    print("Available options:", available_options)
-
-    assert len(available_options) > 0, "No available options returned"
-
-    for part_id, options in available_options.items():
-        print(f"Part {part_id} options: {[option.id for option in options]}")
-        assert len(options) > 0, f"No options available for part {part_id}"
+    available_option_names = [option.name for option in available_options]
+    assert "Mountain wheels" in available_option_names
+    assert "Road wheels" not in available_option_names
 
 
-def test_get_available_options_invalid_product(order_service):
-    with pytest.raises(ValueError, match="Product with id 999 not found"):
-        order_service.get_available_options(999, {})
+def test_price_rule_application(order_service, db_session):
+    product = db_session.query(Product).first()
+    order = Order(product=product, total_price=0)
+    db_session.add(order)
+    db_session.commit()
 
+    full_suspension = db_session.query(Option).filter_by(name="Full-suspension").first()
+    mountain_wheels = db_session.query(Option).filter_by(name="Mountain wheels").first()
+    black_rim = db_session.query(Option).filter_by(name="Black").first()
 
-def test_validate_and_add_part_invalid_product(order_service):
-    with pytest.raises(ValueError, match="Product with id 999 not found"):
-        order_service.validate_and_add_part(999, {}, 1, 1)
+    order.options.extend([full_suspension, mountain_wheels, black_rim])
+    db_session.commit()
 
+    total_price = order_service.calculate_price(order)
+    assert total_price == 260  # 130 + 100 + 30 (price rule for black rim)
 
-def test_validate_and_add_part_invalid_option(order_service):
-    with pytest.raises(ValueError, match="Option with id 999 not found"):
-        order_service.validate_and_add_part(1, {}, 1, 999)
+    # Change to road wheels, which should not trigger the price rule
+    road_wheels = db_session.query(Option).filter_by(name="Road wheels").first()
+    order.options.remove(mountain_wheels)
+    order.options.append(road_wheels)
+    db_session.commit()
+
+    total_price = order_service.calculate_price(order)
+    assert total_price == 230  # 130 + 80 + 20 (no price rule applied)

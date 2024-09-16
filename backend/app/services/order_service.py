@@ -1,8 +1,8 @@
 from typing import List
 from sqlalchemy.sql.schema import Column
-from backend.app.api.orders import OrderResponse
 from backend.app.models.product import Order, Product
 from backend.app.repositories.pricing_repository import PricingOrderRepository
+from backend.app.schemas.order import OrderResponse
 from ..models.product import Option, OptionCompatibility, PriceRule
 
 
@@ -15,16 +15,18 @@ class OrderService:
         order: Order = self.repository.create_order(Order(product=product))
 
         total_price = 0
-        available_options: List[Option] = self.repository.get_options(product.id)
+        available_options: List[dict[int, int]] = {
+            option.part_id: option.id
+            for option in self.repository.get_options(product.id)
+        }
 
         return OrderResponse(
-            order=order, total_price=total_price, available_options=available_options
+            order_id=order.id,
+            total_price=total_price,
+            available_options=available_options,
         )
 
-    def update_order(self, order_id: int, option_id: int) -> OrderResponse:
-        order: Order = self.repository.get_order(order_id)
-        option: Option = self.repository.get_option(option_id)
-
+    def update_order(self, order: Order, option: Option) -> OrderResponse:
         options: List[Option] = self.repository.get_options(order.product_id)
         conditions: List[OptionCompatibility] = (
             self.repository.get_option_compatibilities(options)
@@ -36,12 +38,13 @@ class OrderService:
             raise ValueError("Option is not compatible with the order")
 
         total_price: float = self.calculate_price(order)
-        available_options: List[Option] = self.get_available_options(
-            order, options, conditions
-        )
+        available_options: List[dict[int, int]] = {
+            option.part_id: option.id
+            for option in self.get_available_options(order, options, conditions)
+        }
 
         return OrderResponse(
-            order=order, total_price=total_price, available_options=available_options
+            id=order.id, total_price=total_price, available_options=available_options
         )
 
     def calculate_price(self, order: Order) -> float:

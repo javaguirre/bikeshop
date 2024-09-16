@@ -8,7 +8,6 @@ from .product import (
     PriceRule,
     PriceRuleCondition,
     Order,
-    OrderItem,
 )
 
 Base.metadata.create_all(bind=engine)

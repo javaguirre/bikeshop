@@ -32,6 +32,10 @@ product_parts = Table(
 )
 
 
+# Product, Parts, Rules and Options would be in different files,
+# but for simplicity, we'll keep them in the same file
+
+
 class Product(Base):
     __tablename__ = "products"
 
@@ -43,6 +47,7 @@ class Product(Base):
         "Category", secondary=product_categories, back_populates="products"
     )
     parts = relationship("Part", secondary=product_parts, back_populates="products")
+    orders = relationship("Order", back_populates="product")
 
 
 class Category(Base):
@@ -70,36 +75,21 @@ class Part(Base):
 class Option(Base):
     __tablename__ = "options"
 
-    id = Column(Integer, primary_key=True)
-    part_id = Column(Integer, ForeignKey("parts.id"))
-    name = Column(String(255), nullable=False)
-    description = Column(Text)
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
     base_price = Column(Numeric(10, 2), nullable=False)
+    part_id = Column(Integer, ForeignKey("parts.id"))
+
     in_stock = Column(Boolean, default=True)
 
     part = relationship("Part", back_populates="options")
-
-    compatible_options = relationship(
-        "Option",
-        secondary="option_compatibility",
-        primaryjoin="Option.id==option_compatibility.c.option_id",
-        secondaryjoin="Option.id==option_compatibility.c.compatible_option_id",
-        back_populates="compatible_with",
-    )
-    compatible_with = relationship(
-        "Option",
-        secondary="option_compatibility",
-        primaryjoin="Option.id==option_compatibility.c.compatible_option_id",
-        secondaryjoin="Option.id==option_compatibility.c.option_id",
-        back_populates="compatible_options",
-    )
+    orders = relationship("Order", secondary="order_options", back_populates="options")
 
 
 class OptionCompatibility(Base):
     __tablename__ = "option_compatibility"
 
     option_id = Column(Integer, ForeignKey("options.id"), primary_key=True)
-    part_id = Column(Integer, ForeignKey("parts.id"), primary_key=True)
     compatible_option_id = Column(Integer, ForeignKey("options.id"), primary_key=True)
     include_exclude = Column(
         Enum("include", "exclude"), nullable=False, default="include"
@@ -138,15 +128,4 @@ class Order(Base):
     product_id = Column(Integer, ForeignKey("products.id"))
 
     product = relationship("Product", back_populates="orders")
-    order_items = relationship("OrderItem", back_populates="order")
-
-
-class OrderItem(Base):
-    __tablename__ = "order_items"
-
-    id = Column(Integer, primary_key=True)
-    option_id = Column(Integer, ForeignKey("options.id"))
-    order_id = Column(Integer, ForeignKey("orders.id"))
-
-    option = relationship("Option", back_populates="order_items")
-    order = relationship("Order", back_populates="order_items")
+    options = relationship("Option", secondary="order_options", back_populates="orders")
