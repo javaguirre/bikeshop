@@ -1,6 +1,8 @@
 import { Product, ProductCreate } from '../types'
 
+// WE would use the API_URL from the .env file in a real project
 const API_URL = 'http://localhost:8000'
+
 
 export async function getProducts(): Promise<Product[]> {
   const response = await fetch(`${API_URL}/products/`)

@@ -8,6 +8,10 @@ PYTHONPATH=. pytest --cov
 
 # Frontend
 
+.env.local with:
+
+NEXT_PUBLIC_API_URL=http://localhost:8000
+
 ```bash
 cd frontend
 yarn run dev
@@ -17,6 +21,7 @@ yarn run dev
 
 ```bash
 uvicorn backend.app.main:app --reload
+PYTHONPATH=. python backend/app/models/fixtures.py
 ```
 
 # TODO:

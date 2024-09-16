@@ -39,7 +39,7 @@ class Product(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(255), nullable=False)
-    description = Column(Text)
+    description = Column(Text, nullable=True)
 
     categories = relationship(
         "Category", secondary=product_categories, back_populates="products"
