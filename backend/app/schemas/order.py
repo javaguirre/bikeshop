@@ -4,7 +4,7 @@ from pydantic import BaseModel
 class OrderResponse(BaseModel):
     id: int
     total_price: float
-    available_options: list[dict[int, int]]
+    available_options: dict[int, list[int]]
 
     class Config:
         orm_mode = True

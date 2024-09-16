@@ -99,6 +99,7 @@ def test_update_order_valid_option(order_service, db_session):
     db_session.commit()
 
     full_suspension = db_session.query(Option).filter_by(name="Full-suspension").first()
+    breakpoint()
     response = order_service.update_order(order, full_suspension)
 
     assert response.id == order.id
@@ -108,7 +109,7 @@ def test_update_order_valid_option(order_service, db_session):
 
 def test_update_order_incompatible_option(order_service, db_session):
     product = db_session.query(Product).first()
-    order = Order(product=product, total_price=0)  # Set initial total_price
+    order = Order(product=product, total_price=0)
     db_session.add(order)
     db_session.commit()
 

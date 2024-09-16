@@ -1,3 +1,5 @@
+from itertools import groupby
+from operator import attrgetter
 from typing import List
 from sqlalchemy.sql.schema import Column
 from backend.app.models.product import Order, Product
@@ -17,13 +19,13 @@ class OrderService:
         )
 
         total_price = 0
-        available_options: List[dict[int, int]] = {
-            option.part_id: option.id
-            for option in self.repository.get_options(product.id)
-        }
+        options: List[Option] = self.repository.get_options(product.id)
+        available_options: dict[int, list[int]] = self._format_available_options(
+            options
+        )
 
         return OrderResponse(
-            order_id=order.id,
+            id=order.id,
             total_price=total_price,
             available_options=available_options,
         )
@@ -35,15 +37,17 @@ class OrderService:
         )
 
         if not self._is_valid_option_with_current_order(
-            order.options, conditions, option
+            order.options + [option], conditions
         ):
             raise ValueError("Option is not compatible with the order")
 
+        order.options.append(option)
+        self.repository.update_order(order)
+
         total_price: float = self.calculate_price(order)
-        available_options: List[dict[int, int]] = {
-            option.part_id: option.id
-            for option in self.get_available_options(order, options, conditions)
-        }
+        available_options: dict[int, list[int]] = self._format_available_options(
+            self.get_available_options(order.options, conditions)
+        )
 
         return OrderResponse(
             id=order.id, total_price=total_price, available_options=available_options
@@ -61,19 +65,24 @@ class OrderService:
         return self._calculate_price_by_options(order.options, rules)
 
     def get_available_options(
-        self, order: Order, options: list[Option], conditions: list[OptionCompatibility]
+        self, options: list[Option], conditions: list[OptionCompatibility]
     ) -> list[Option]:
         """
         Get the available options for the current order.
         """
-        return list(
-            filter(
-                lambda option: self._is_valid_option_with_current_order(
-                    order.options, conditions, option
-                ),
-                options,
+        return [
+            option
+            for option in options
+            if self._is_valid_option_with_current_order(options, conditions)
+        ]
+
+    def _format_available_options(self, options: list[Option]) -> dict[int, list[int]]:
+        return {
+            part_id: list(map(attrgetter("id"), group))
+            for part_id, group in groupby(
+                sorted(options, key=attrgetter("part_id")), key=attrgetter("part_id")
             )
-        )
+        }
 
     def _calculate_price_by_options(
         self, options: list[Option], rules: list[PriceRule]
@@ -120,61 +129,38 @@ class OrderService:
 
     def _is_valid_option_with_current_order(
         self,
-        order_options: list[Option],
+        options: list[Option],
         conditions: list[OptionCompatibility],
-        option: Option,
     ):
-        for option in order_options:
-            option_conditions: List[OptionCompatibility] = (
-                self._get_option_compatibitilies(option, conditions)
-            )
+        if len(options) <= 1:
+            return True
 
-            if not option_conditions:
-                return True
+        current_option_ids: list[int] = [option.id for option in options]
 
-            else:
-                return self._is_option_compatible_with_order(
-                    option, option_conditions, order_options
-                )
+        # Check compatibility for the new option
+        option_conditions = self._get_option_compatibilities(
+            current_option_ids, conditions
+        )
 
-    def _get_option_compatibitilies(
-        self, option: Option, compatibilities: list[OptionCompatibility]
-    ) -> List[OptionCompatibility]:
-        option_compatibilities: List[OptionCompatibility] = [
-            compatibility
-            for compatibility in compatibilities
-            if compatibility.option_id == option.id
-        ]
+        if not option_conditions:
+            return True  # If no conditions, the option is always valid
 
-        # If a part from this option has other compatibilities, we need to check them
-        option_compatibilities += [
-            compatibility
-            for compatibility in compatibilities
-            if compatibility.option.part_id == option.part_id
-        ]
-
-        return option_compatibilities
-
-    def _is_option_compatible_with_order(
-        self,
-        option: Option,
-        compatibilities: list[OptionCompatibility],
-        order_options: list[Option],
-    ):
-        order_option_ids = {opt.id for opt in order_options}
-
-        for compatibility in compatibilities:
-            if compatibility.option_id == option.id:
-                if compatibility.include_exclude == "include":
-                    if compatibility.compatible_option_id not in order_option_ids:
-                        return False
-                elif compatibility.compatible_option_id in order_option_ids:
+        for condition in option_conditions:
+            if condition.include_exclude == "include":
+                if condition.compatible_option_id not in current_option_ids:
                     return False
-            elif compatibility.compatible_option.part_id == option.part_id:
-                if compatibility.include_exclude == "exclude":
-                    if compatibility.compatible_option_id == option.id:
-                        return False
-                elif compatibility.compatible_option_id != option.id:
+            elif condition.include_exclude == "exclude":
+                if condition.compatible_option_id in current_option_ids:
                     return False
 
         return True
+
+    def _get_option_compatibilities(
+        self, option_ids: list[int], compatibilities: list[OptionCompatibility]
+    ) -> List[OptionCompatibility]:
+        return [
+            compatibility
+            for compatibility in compatibilities
+            if compatibility.option_id in option_ids
+            or compatibility.compatible_option_id in option_ids
+        ]
