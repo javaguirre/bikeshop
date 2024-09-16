@@ -15,21 +15,19 @@ export default function CartPage() {
 
   useEffect(() => {
     async function fetchParts() {
-    const data = await getParts(Number(TEST_PRODUCT_ID))
-
-    if (data) {
-        setLoading(false)
-        setParts(data)
-        // Initialize selectedOptions with the first option of each part
-        const initialOptions: Record<number, number> = {}
-        data.forEach(part => {
-        if (part.options.length > 0) {
-            initialOptions[Number(part.id)] = part.options[0].id
+        const data = await getParts(Number(TEST_PRODUCT_ID))
+        if (data) {
+          setLoading(false)
+          setParts(data)
+          const initialOptions: Record<number, number> = {}
+          data.forEach(part => {
+            if (part.options.length > 0) {
+              initialOptions[part.id] = part.options[0].id
+            }
+          })
+          setSelectedOptions(initialOptions)
         }
-        })
-        setSelectedOptions(initialOptions)
-    }
-    }
+      }
     fetchParts()
   }, [id])
 
@@ -38,38 +36,52 @@ export default function CartPage() {
   }
 
   if (loading) {
-    return <div>Loading...</div>
+    return (
+      <div className="container mt-5">
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    )
   }
 
   if (parts.length === 0) {
-    return <div>No parts found</div>
+    return (
+      <div className="container mt-5">
+        <div className="alert alert-warning" role="alert">
+          No parts found
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div>
-      <h1>Customize Your Bike</h1>
-      {parts.map(part => (
-        <div key={part.id} className="mb-4">
-          <label htmlFor={`part-${part.id}`} className="block mb-2 font-bold">
-            {part.name}
-          </label>
-          <select
-            id={`part-${part.id}`}
-            value={selectedOptions[Number(part.id)] || ''}
-            onChange={(e) => handleOptionChange(Number(part.id), Number(e.target.value))}
-            className="w-full p-2 border rounded"
-          >
-            {part.options.map(option => (
-              <option key={option.id} value={option.id}>
-                {option.name} - ${option.price}
-              </option>
-            ))}
-          </select>
-        </div>
-      ))}
-      <Link href="/cart" className="mt-4 inline-block px-4 py-2 bg-blue-500 text-white rounded">
-        Add to Cart
-      </Link>
+    <div className="container mt-5">
+      <h1 className="mb-4">Customize Your Bike</h1>
+      <form>
+        {parts.map(part => (
+          <div key={part.id} className="mb-3">
+            <label htmlFor={`part-${part.id}`} className="form-label fw-bold">
+              {part.name}
+            </label>
+            <select
+              id={`part-${part.id}`}
+              value={selectedOptions[part.id] || ''}
+              onChange={(e) => handleOptionChange(part.id, Number(e.target.value))}
+              className="form-select"
+            >
+              {part.options.map(option => (
+                <option key={option.id} value={option.id}>
+                  {option.name} - ${option.price.toFixed(2)}
+                </option>
+              ))}
+            </select>
+          </div>
+        ))}
+        <button type="submit" className="btn btn-primary">
+          Add to Cart
+        </button>
+      </form>
     </div>
   )
 }
