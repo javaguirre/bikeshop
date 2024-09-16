@@ -12,7 +12,9 @@ class OrderService:
         self.repository = repository
 
     def create_order(self, product: Product) -> OrderResponse:
-        order: Order = self.repository.create_order(Order(product=product))
+        order: Order = self.repository.create_order(
+            Order(product=product, total_price=0)
+        )
 
         total_price = 0
         available_options: List[dict[int, int]] = {
@@ -108,7 +110,10 @@ class OrderService:
             ]
 
             # We get the first rule that matches
-            if current_rule_condition_option_ids in current_option_ids:
+            if all(
+                option_id in current_option_ids
+                for option_id in current_rule_condition_option_ids
+            ):
                 return rule.price
 
         return option.price
@@ -145,7 +150,7 @@ class OrderService:
         option_compatibilities += [
             compatibility
             for compatibility in compatibilities
-            if compatibility.part_id == option.part_id
+            if compatibility.option.part_id == option.part_id
         ]
 
         return option_compatibilities
@@ -165,7 +170,7 @@ class OrderService:
                         return False
                 elif compatibility.compatible_option_id in order_option_ids:
                     return False
-            elif compatibility.part_id == option.part_id:
+            elif compatibility.compatible_option.part_id == option.part_id:
                 if compatibility.include_exclude == "exclude":
                     if compatibility.compatible_option_id == option.id:
                         return False

@@ -1,11 +1,12 @@
 from typing import List
 from sqlalchemy import Column
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from backend.app.models.product import (
     Option,
     OptionCompatibility,
     Order,
+    Part,
     PriceRule,
     Product,
 )
@@ -60,7 +61,8 @@ class PricingOrderRepository:
     def get_options(self, product_id: int) -> List[Option]:
         return (
             self.db.query(Option)
-            .filter(Option.in_stock, Option.product_id == product_id)
+            .join(Part, Part.id == Option.part_id)
+            .filter(Option.in_stock, Part.product_id == product_id)
             .all()
         )
 
@@ -71,6 +73,10 @@ class PricingOrderRepository:
         return (
             self.db.query(OptionCompatibility)
             .filter(OptionCompatibility.option_id.in_(option_ids))
+            .options(
+                joinedload(OptionCompatibility.option),
+                joinedload(OptionCompatibility.compatible_option),
+            )
             .all()
         )
 

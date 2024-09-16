@@ -4,7 +4,6 @@ from pydantic import BaseModel
 class ProductBase(BaseModel):
     name: str
     description: str
-    base_price: float
 
 
 class ProductCreate(ProductBase):
