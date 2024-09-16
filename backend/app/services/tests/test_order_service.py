@@ -99,7 +99,6 @@ def test_update_order_valid_option(order_service, db_session):
     db_session.commit()
 
     full_suspension = db_session.query(Option).filter_by(name="Full-suspension").first()
-    breakpoint()
     response = order_service.update_order(order, full_suspension)
 
     assert response.id == order.id
@@ -152,7 +151,7 @@ def test_get_available_options(order_service, db_session):
     options = db_session.query(Option).all()
     conditions = db_session.query(OptionCompatibility).all()
 
-    available_options = order_service.get_available_options(order, options, conditions)
+    available_options = order_service.get_available_options(options, conditions)
 
     available_option_names = [option.name for option in available_options]
     assert "Mountain wheels" in available_option_names

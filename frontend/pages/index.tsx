@@ -14,10 +14,10 @@ export default function Home() {
         <h1>Welcome to Marcus's Bicycle Shop</h1>
         <nav>
           <Link href="/products">
-            <a>View Products</a>
+            View Products
           </Link>
           <Link href="/admin/products">
-            <a>Admin: Manage Products</a>
+            Admin: Manage Products
           </Link>
         </nav>
       </main>

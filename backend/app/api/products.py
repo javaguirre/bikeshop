@@ -1,5 +1,5 @@
-from app.schemas.product import Product, ProductCreate
-from app.services.product_service import ProductService
+from backend.app.schemas.product import Product, ProductCreate
+from backend.app.services.product_service import ProductService
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 

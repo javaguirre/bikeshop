@@ -1,14 +1,15 @@
 from fastapi import FastAPI
-from app.api import products, parts, orders
-from app.database import engine, Base
+
+from backend.app.api import orders, products
+from backend.app.models import Base, engine
 
 app = FastAPI()
 
 Base.metadata.create_all(bind=engine)
 
 app.include_router(products.router)
-app.include_router(parts.router)
 app.include_router(orders.router)
+
 
 @app.get("/")
 async def root():

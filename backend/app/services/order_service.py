@@ -36,7 +36,7 @@ class OrderService:
             self.repository.get_option_compatibilities(options)
         )
 
-        if not self._is_valid_option_with_current_order(
+        if not self._have_valid_options_with_current_order(
             order.options + [option], conditions
         ):
             raise ValueError("Option is not compatible with the order")
@@ -45,13 +45,42 @@ class OrderService:
         self.repository.update_order(order)
 
         total_price: float = self.calculate_price(order)
+        product_available_options: list[Option] = self.repository.get_options(
+            order.product_id
+        )
+
         available_options: dict[int, list[int]] = self._format_available_options(
-            self.get_available_options(order.options, conditions)
+            self.get_available_options(
+                product_available_options, order.options, conditions
+            )
         )
 
         return OrderResponse(
             id=order.id, total_price=total_price, available_options=available_options
         )
+
+    def get_available_options(
+        self,
+        options: list[Option],
+        order_options: list[Option],
+        conditions: list[OptionCompatibility],
+    ) -> list[Option]:
+        return [
+            option
+            for option in options
+            if self._is_valid_option_with_current_order(
+                option, order_options, conditions
+            )
+        ]
+
+    def _is_valid_option_with_current_order(
+        self,
+        option: Option,
+        order_options: list[Option],
+        conditions: list[OptionCompatibility],
+    ) -> bool:
+        # TODO
+        return True
 
     def calculate_price(self, order: Order) -> float:
         """
@@ -63,18 +92,6 @@ class OrderService:
         )
 
         return self._calculate_price_by_options(order.options, rules)
-
-    def get_available_options(
-        self, options: list[Option], conditions: list[OptionCompatibility]
-    ) -> list[Option]:
-        """
-        Get the available options for the current order.
-        """
-        return [
-            option
-            for option in options
-            if self._is_valid_option_with_current_order(options, conditions)
-        ]
 
     def _format_available_options(self, options: list[Option]) -> dict[int, list[int]]:
         return {
@@ -127,7 +144,7 @@ class OrderService:
 
         return option.price
 
-    def _is_valid_option_with_current_order(
+    def _have_valid_options_with_current_order(
         self,
         options: list[Option],
         conditions: list[OptionCompatibility],
@@ -137,7 +154,7 @@ class OrderService:
 
         current_option_ids: list[int] = [option.id for option in options]
 
-        # Check compatibility for the new option
+        # Check compatibility for the options with the new option
         option_conditions = self._get_option_compatibilities(
             current_option_ids, conditions
         )

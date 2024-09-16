@@ -11,7 +11,7 @@ export default function ProductList({ products }: ProductListProps) {
       {products.map((product) => (
         <li key={product.id}>
           <Link href={`/products/${product.id}`}>
-            <a>{product.name} - ${product.base_price}</a>
+            <a>{product.name}</a>
           </Link>
         </li>
       ))}

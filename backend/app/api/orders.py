@@ -29,7 +29,7 @@ def create_product(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.put("/orders/{order_id}", response_model=Order)
+@router.put("/orders/{order_id}", response_model=OrderResponse)
 def update_order(
     payload: UpdateOrderPayload, order_id: int, db: Session = Depends(get_db)
 ):

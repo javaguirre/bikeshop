@@ -6,6 +6,19 @@
 PYTHONPATH=. pytest --cov
 ```
 
+# Frontend
+
+```bash
+cd frontend
+yarn run dev
+```
+
+# Backend
+
+```bash
+uvicorn backend.app.main:app --reload
+```
+
 # TODO:
 
 Add interfaces for the services
