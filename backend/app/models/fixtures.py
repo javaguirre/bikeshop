@@ -47,15 +47,9 @@ def main():
 
         # Add compatibility rules
         compatibilities = [
-            OptionCompatibility(
-                option_id=1, compatible_option_id=4, include_exclude="include"
-            ),
-            OptionCompatibility(
-                option_id=2, compatible_option_id=3, include_exclude="exclude"
-            ),
-            OptionCompatibility(
-                option_id=5, compatible_option_id=7, include_exclude="include"
-            ),
+            OptionCompatibility(option1_id=1, option2_id=4, compatible=True),
+            OptionCompatibility(option1_id=2, option2_id=3, compatible=True),
+            OptionCompatibility(option1_id=5, option2_id=7, compatible=True),
         ]
         db.add_all(compatibilities)
 

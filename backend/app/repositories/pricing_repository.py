@@ -87,7 +87,6 @@ class PricingOrderRepository:
         return order
 
     def create_order(self, order: Order):
-        # TODO: Initial status??
         self.db.add(order)
         self.db.commit()
         self.db.refresh(order)

@@ -75,18 +75,12 @@ class OptionCompatibility(Base):
     __tablename__ = "option_compatibilities"
 
     id = Column(Integer, primary_key=True, index=True)
-    option_id = Column(Integer, ForeignKey("options.id"))
-    compatible_option_id = Column(Integer, ForeignKey("options.id"))
-    include_exclude = Column(
-        Enum("include", "exclude"), nullable=False, default="include"
-    )
+    option1_id = Column(Integer, ForeignKey("options.id"))
+    option2_id = Column(Integer, ForeignKey("options.id"))
+    compatible = Column(Boolean)
 
-    option = relationship(
-        "Option", foreign_keys=[option_id], back_populates="compatibilities"
-    )
-    compatible_option = relationship(
-        "Option", foreign_keys=[compatible_option_id], back_populates="compatible_with"
-    )
+    option1 = relationship("Option", foreign_keys=[option1_id])
+    option2 = relationship("Option", foreign_keys=[option2_id])
 
 
 class Option(Base):
@@ -104,13 +98,13 @@ class Option(Base):
 
     compatibilities = relationship(
         "OptionCompatibility",
-        foreign_keys=[OptionCompatibility.option_id],
-        back_populates="option",
+        foreign_keys=[OptionCompatibility.option1_id],
+        back_populates="option1",
     )
     compatible_with = relationship(
         "OptionCompatibility",
-        foreign_keys=[OptionCompatibility.compatible_option_id],
-        back_populates="compatible_option",
+        foreign_keys=[OptionCompatibility.option2_id],
+        back_populates="option2",
     )
 
 
@@ -119,7 +113,6 @@ class PriceRule(Base):
 
     id = Column(Integer, primary_key=True)
     option_id = Column(Integer, ForeignKey("products.id"))
-    # TODO: We could add a rule type
     price = Column(Numeric(10, 2), nullable=False)
 
     conditions = relationship("PriceRuleCondition", back_populates="price_rule")

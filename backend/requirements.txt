@@ -3,3 +3,4 @@ fastapi==0.114.1
 sqlalchemy==2.0.34
 fastapi-cli==0.0.5
 fastapi-cors==0.0.6
+z3-solver==4.13.0.0

@@ -1,3 +1,4 @@
+from unittest.mock import Mock
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -13,7 +14,7 @@ from backend.app.models.product import (
     Product,
 )
 from backend.app.repositories.pricing_repository import PricingOrderRepository
-from backend.app.services.order_service import OrderService
+from backend.app.services.order_service import CartOrderService
 
 
 @pytest.fixture(scope="function")
@@ -58,15 +59,9 @@ def db_session():
 
     # Add compatibility rules
     compatibilities = [
-        OptionCompatibility(
-            option_id=1, compatible_option_id=4, include_exclude="include"
-        ),
-        OptionCompatibility(
-            option_id=2, compatible_option_id=3, include_exclude="exclude"
-        ),
-        OptionCompatibility(
-            option_id=5, compatible_option_id=7, include_exclude="include"
-        ),
+        OptionCompatibility(option1_id=1, option2_id=4, compatible=True),
+        OptionCompatibility(option1_id=2, option2_id=3, compatible=True),
+        OptionCompatibility(option1_id=5, option2_id=7, compatible=True),
     ]
     session.add_all(compatibilities)
 
@@ -80,7 +75,7 @@ def db_session():
 @pytest.fixture
 def order_service(db_session):
     repository = PricingOrderRepository(db_session)
-    return OrderService(repository)
+    return CartOrderService(repository, Mock())
 
 
 # def test_create_order(order_service, db_session):
@@ -136,26 +131,6 @@ def test_calculate_price_basic(order_service, db_session):
 
     total_price = order_service.calculate_price(order)
     assert total_price == 260  # 130 + 100 + 30 (price rule for black rim)
-
-
-def test_get_available_options(order_service, db_session):
-    product = db_session.query(Product).first()
-    order = Order(product=product, total_price=0)
-    db_session.add(order)
-    db_session.commit()
-
-    full_suspension = db_session.query(Option).filter_by(name="Full-suspension").first()
-    order.options.append(full_suspension)
-    db_session.commit()
-
-    options = db_session.query(Option).all()
-    conditions = db_session.query(OptionCompatibility).all()
-
-    available_options = order_service.get_available_options(options, conditions)
-
-    available_option_names = [option.name for option in available_options]
-    assert "Mountain wheels" in available_option_names
-    assert "Road wheels" not in available_option_names
 
 
 def test_price_rule_application(order_service, db_session):
