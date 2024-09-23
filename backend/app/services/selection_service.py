@@ -20,7 +20,9 @@ class PartSelectionService:
         }
 
         for part in parts:
-            part_options = [self.option_vars[option.id] for option in part.options]
+            part_options = [
+                self.option_vars[option.id] == option.id for option in part.options
+            ]
             self.solver.add(Or(part_options))
 
         for compatibility in compatibilities:
