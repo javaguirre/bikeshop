@@ -1,3 +1,4 @@
+from typing import List
 from sqlalchemy.orm import Session
 from backend.app.models.product import Product
 from backend.app.schemas.product import ProductCreate
@@ -14,8 +15,8 @@ class ProductService:
         self.db.refresh(db_product)
         return db_product
 
-    def get_product(self, product_id: int):
+    def get_product(self, product_id: int) -> Product | None:
         return self.db.query(Product).filter(Product.id == product_id).first()
 
-    def get_products(self, skip: int = 0, limit: int = 100):
+    def get_products(self, skip: int = 0, limit: int = 100) -> List[Product]:
         return self.db.query(Product).offset(skip).limit(limit).all()

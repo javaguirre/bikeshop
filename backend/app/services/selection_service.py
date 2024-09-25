@@ -1,9 +1,13 @@
-from z3 import Solver, sat, unsat, Int, Or, Implies, ArithRef
+from z3 import Solver, sat, Int, Or, Implies, ArithRef
+import logging
 
-from backend.app.models.product import Option, OptionCompatibility, Part
+from backend.app.models.product import Option, Part
+from backend.app.services.base import BaseSelectionService
+
+logger = logging.getLogger(__name__)
 
 
-class PartSelectionService:
+class PartSelectionService(BaseSelectionService):
     def __init__(self):
         self.solver = Solver()
         self.option_vars: dict[int, ArithRef] = {}
@@ -12,11 +16,10 @@ class PartSelectionService:
         self,
         parts: list[Part],
         options: list[Option],
-        compatibilities: list[OptionCompatibility],
+        grouped_compatibilities: dict[int, dict[str, list[int]]],
     ):
         self.option_vars = {
-            option.id: Int(f"part{option.part_id}_option{option.id}")
-            for option in options
+            option.id: Int(f"part{option.part_id}") for option in options
         }
 
         for part in parts:
@@ -25,26 +28,29 @@ class PartSelectionService:
             ]
             self.solver.add(Or(part_options))
 
-        for compatibility in compatibilities:
-            option1 = self.option_vars[compatibility.option1_id]
-            option2 = self.option_vars[compatibility.option2_id]
+        for option1_id, rules in grouped_compatibilities.items():
+            option1_var: ArithRef = self.option_vars[option1_id]
 
-            if compatibility.compatible:
-                self.solver.add(
-                    Implies(
-                        option1 == compatibility.option1_id,
-                        Or(option2 == compatibility.option2_id),
-                    )
-                )
-            else:
-                self.solver.add(
-                    Implies(
-                        option1 == compatibility.option1_id,
-                        option2 != compatibility.option2_id,
-                    )
-                )
+            if not rules:
+                continue
 
-    def get_available_options(self, parts: list[Part]):
+            self.solver.add(
+                Implies(
+                    option1_var == option1_id,
+                    Or(
+                        [
+                            self.option_vars[opt_id] == opt_id
+                            for opt_id in rules["compatible"]
+                        ]
+                        + [
+                            self.option_vars[opt_id] != opt_id
+                            for opt_id in rules["incompatible"]
+                        ]
+                    ),
+                )
+            )
+
+    def get_available_options(self, parts: list[Part]) -> dict[int, list[int]]:
         available_options = {}
 
         for part in parts:
@@ -61,22 +67,8 @@ class PartSelectionService:
 
         return available_options
 
-    def check_satisfiability(self):
-        if self.solver.check() == sat:
-            print("The constraints are satisfiable.")
-        elif self.solver.check() == unsat:
-            print(
-                "The constraints are unsatisfiable! No valid configuration is possible."
-            )
-        else:
-            print("Solver returned unknown. Could not determine satisfiability.")
-
-    def find_conflicting_constraints(self):
-        if self.solver.check() == unsat:
-            print("\nUnsatisfiable! Here's the reason:")
-            print(self.solver.unsat_core())
-        else:
-            print("The constraints are satisfiable.")
+    def is_selection_valid(self) -> bool:
+        return self.solver.check() == sat
 
     def select_part_option(self, option: Option):
         self.solver.add(self.option_vars[option.id] == option.id)

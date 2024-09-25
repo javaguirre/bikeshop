@@ -1,5 +1,5 @@
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from backend.app.services.part_service import PartService
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
@@ -10,23 +10,21 @@ router = APIRouter()
 
 
 class OptionSchema(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     id: int
     name: str
     price: float
 
-    class Config:
-        orm_mode = True
-
 
 class PartSchema(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     id: int
     name: str
     price: Optional[float] = None
     product_id: int
     options: List[OptionSchema]
-
-    class Config:
-        orm_mode = True
 
 
 class PartList(BaseModel):

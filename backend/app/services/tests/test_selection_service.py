@@ -9,6 +9,7 @@ from backend.app.models.product import (
     Part,
     Product,
 )
+from backend.app.repositories.pricing_repository import PricingOrderRepository
 from backend.app.services.selection_service import PartSelectionService
 
 
@@ -64,22 +65,27 @@ def selection_service():
     return PartSelectionService()
 
 
-def test_load_compatibilities(selection_service, db_session):
+@pytest.fixture
+def repository(db_session):
+    return PricingOrderRepository(db_session)
+
+
+def test_load_compatibilities(selection_service, repository, db_session):
     parts = db_session.query(Part).all()
     options = db_session.query(Option).all()
-    compatibilities = db_session.query(OptionCompatibility).all()
+    grouped_compatibilities = repository.get_compatibilities(options)
 
-    selection_service.load_compatibilities(parts, options, compatibilities)
+    selection_service.load_compatibilities(parts, options, grouped_compatibilities)
 
     assert len(selection_service.option_vars) == len(options)
 
 
-def test_get_available_options(selection_service, db_session):
+def test_get_available_options(selection_service, repository, db_session):
     parts = db_session.query(Part).all()
     options = db_session.query(Option).all()
-    compatibilities = db_session.query(OptionCompatibility).all()
+    grouped_compatibilities = repository.get_compatibilities(options)
 
-    selection_service.load_compatibilities(parts, options, compatibilities)
+    selection_service.load_compatibilities(parts, options, grouped_compatibilities)
     available_options = selection_service.get_available_options(parts)
 
     assert len(available_options) == len(parts)
@@ -87,43 +93,40 @@ def test_get_available_options(selection_service, db_session):
         assert len(options) > 0
 
 
-def test_check_satisfiability(selection_service, db_session, capsys):
+def test_is_selection_valid_returns_valid(selection_service, repository, db_session):
     parts = db_session.query(Part).all()
     options = db_session.query(Option).all()
-    compatibilities = db_session.query(OptionCompatibility).all()
+    grouped_compatibilities = repository.get_compatibilities(options)
 
-    selection_service.load_compatibilities(parts, options, compatibilities)
-    selection_service.check_satisfiability()
+    selection_service.load_compatibilities(parts, options, grouped_compatibilities)
 
-    captured = capsys.readouterr()
-    assert "The constraints are satisfiable." in captured.out
+    assert selection_service.is_selection_valid()
 
 
-def test_find_conflicting_constraints(selection_service, db_session, capsys):
+def test_is_selection_valid_returns_invalid(
+    selection_service, repository, db_session, capsys
+):
     parts = db_session.query(Part).all()
     options = db_session.query(Option).all()
-    compatibilities = db_session.query(OptionCompatibility).all()
+    full_suspension = db_session.query(Option).filter_by(name="Full-suspension").first()
+    fat_wheels = db_session.query(Option).filter_by(id=5).first()
 
-    # Add an incompatible rule to make it unsatisfiable
-    incompatibility = OptionCompatibility(option1_id=1, option2_id=4, compatible=False)
-    db_session.add(incompatibility)
-    db_session.commit()
+    grouped_compatibilities = repository.get_compatibilities(options)
+    selection_service.load_compatibilities(parts, options, grouped_compatibilities)
 
-    compatibilities = db_session.query(OptionCompatibility).all()
-    selection_service.load_compatibilities(parts, options, compatibilities)
-    selection_service.find_conflicting_constraints()
+    selection_service.select_part_option(full_suspension)
+    # Add incompatible option
+    selection_service.select_part_option(fat_wheels)
 
-    captured = capsys.readouterr()
-
-    assert "Unsatisfiable! Here's the reason:" in captured.out
+    assert not selection_service.is_selection_valid()
 
 
-def test_select_part_option(selection_service, db_session):
+def test_select_part_option(selection_service, repository, db_session):
     parts = db_session.query(Part).all()
     options = db_session.query(Option).all()
-    compatibilities = db_session.query(OptionCompatibility).all()
+    grouped_compatibilities = repository.get_compatibilities(options)
 
-    selection_service.load_compatibilities(parts, options, compatibilities)
+    selection_service.load_compatibilities(parts, options, grouped_compatibilities)
 
     full_suspension = db_session.query(Option).filter_by(name="Full-suspension").first()
     selection_service.select_part_option(full_suspension)

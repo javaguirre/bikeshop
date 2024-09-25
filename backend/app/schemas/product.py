@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class ProductBase(BaseModel):
@@ -11,7 +11,6 @@ class ProductCreate(ProductBase):
 
 
 class Product(ProductBase):
-    id: int
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    class Config:
-        orm_mode = True
+    id: int

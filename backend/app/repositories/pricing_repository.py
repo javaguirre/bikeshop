@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import List
 from sqlalchemy import Column
 from sqlalchemy.orm import Session, joinedload
@@ -66,20 +67,6 @@ class PricingOrderRepository:
             .all()
         )
 
-    def get_option_compatibilities(
-        self, options: list[Option]
-    ) -> List[OptionCompatibility]:
-        option_ids = [option.id for option in options]
-        return (
-            self.db.query(OptionCompatibility)
-            .filter(OptionCompatibility.option_id.in_(option_ids))
-            .options(
-                joinedload(OptionCompatibility.option),
-                joinedload(OptionCompatibility.compatible_option),
-            )
-            .all()
-        )
-
     def update_order(self, order: Order):
         self.db.add(order)
         self.db.commit()
@@ -91,3 +78,28 @@ class PricingOrderRepository:
         self.db.commit()
         self.db.refresh(order)
         return order
+
+    def get_compatibilities(
+        self, option_ids: list[int]
+    ) -> defaultdict[int, dict[str, list[int]]]:
+        compatibilities = (
+            self.db.query(OptionCompatibility)
+            .order_by(OptionCompatibility.option1_id)
+            .all()
+        )
+
+        grouped_compatibilities = defaultdict(
+            lambda: {"compatible": [], "incompatible": []}
+        )
+
+        for compatibility in compatibilities:
+            if compatibility.compatible is True:
+                grouped_compatibilities[compatibility.option1_id]["compatible"].append(
+                    compatibility.option2_id
+                )
+            else:
+                grouped_compatibilities[compatibility.option1_id][
+                    "incompatible"
+                ].append(compatibility.option2_id)
+
+        return grouped_compatibilities

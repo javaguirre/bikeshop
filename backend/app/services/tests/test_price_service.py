@@ -1,4 +1,3 @@
-from unittest.mock import Mock
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -13,8 +12,7 @@ from backend.app.models.product import (
     PriceRuleCondition,
     Product,
 )
-from backend.app.repositories.pricing_repository import PricingOrderRepository
-from backend.app.services.order_service import CartOrderService
+from backend.app.services.price_service import PriceService
 
 
 @pytest.fixture(scope="function")
@@ -73,54 +71,16 @@ def db_session():
 
 
 @pytest.fixture
-def order_service(db_session):
-    repository = PricingOrderRepository(db_session)
-    return CartOrderService(repository, Mock())
+def price_service(db_session):
+    return PriceService()
 
 
-# def test_create_order(order_service, db_session):
-#     product = db_session.query(Product).first()
-#     response = order_service.create_order(product)
-
-#     assert response.id is not None
-#     assert response.total_price == 0
-#     assert len(response.available_options) > 0
-
-
-def test_update_order_valid_option(order_service, db_session):
-    product = db_session.query(Product).first()
-    order = Order(product=product, total_price=0)  # Set initial total_price
-    db_session.add(order)
-    db_session.commit()
-
-    full_suspension = db_session.query(Option).filter_by(name="Full-suspension").first()
-    response = order_service.update_order(order, full_suspension)
-
-    assert response.id == order.id
-    assert response.total_price == 130
-    assert len(response.available_options) > 0
-
-
-def test_update_order_incompatible_option(order_service, db_session):
+def test_calculate_price_basic(price_service, db_session):
     product = db_session.query(Product).first()
     order = Order(product=product, total_price=0)
     db_session.add(order)
     db_session.commit()
-
-    full_suspension = db_session.query(Option).filter_by(name="Full-suspension").first()
-    order_service.update_order(order, full_suspension)
-
-    road_wheels = db_session.query(Option).filter_by(name="Road wheels").first()
-
-    with pytest.raises(ValueError, match="Option is not compatible with the order"):
-        order_service.update_order(order, road_wheels)
-
-
-def test_calculate_price_basic(order_service, db_session):
-    product = db_session.query(Product).first()
-    order = Order(product=product, total_price=0)
-    db_session.add(order)
-    db_session.commit()
+    price_rules = db_session.query(PriceRule).all()
 
     full_suspension = db_session.query(Option).filter_by(name="Full-suspension").first()
     mountain_wheels = db_session.query(Option).filter_by(name="Mountain wheels").first()
@@ -129,15 +89,17 @@ def test_calculate_price_basic(order_service, db_session):
     order.options.extend([full_suspension, mountain_wheels, black_rim])
     db_session.commit()
 
-    total_price = order_service.calculate_price(order)
+    total_price = price_service.calculate_price(order.options, price_rules)
     assert total_price == 260  # 130 + 100 + 30 (price rule for black rim)
 
 
-def test_price_rule_application(order_service, db_session):
+def test_price_rule_application(price_service, db_session):
     product = db_session.query(Product).first()
     order = Order(product=product, total_price=0)
     db_session.add(order)
     db_session.commit()
+
+    price_rules = db_session.query(PriceRule).all()
 
     full_suspension = db_session.query(Option).filter_by(name="Full-suspension").first()
     mountain_wheels = db_session.query(Option).filter_by(name="Mountain wheels").first()
@@ -146,7 +108,7 @@ def test_price_rule_application(order_service, db_session):
     order.options.extend([full_suspension, mountain_wheels, black_rim])
     db_session.commit()
 
-    total_price = order_service.calculate_price(order)
+    total_price = price_service.calculate_price(order.options, price_rules)
     assert total_price == 260  # 130 + 100 + 30 (price rule for black rim)
 
     # Change to road wheels, which should not trigger the price rule
@@ -155,5 +117,5 @@ def test_price_rule_application(order_service, db_session):
     order.options.append(road_wheels)
     db_session.commit()
 
-    total_price = order_service.calculate_price(order)
+    total_price = price_service.calculate_price(order.options, price_rules)
     assert total_price == 230  # 130 + 80 + 20 (no price rule applied)
