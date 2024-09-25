@@ -26,9 +26,9 @@ PYTHONPATH=. python backend/app/models/fixtures.py
 
 # TODO:
 
-Add interfaces for the services
 organize models in different files
-Control the rules aren't incongruent, adding constraints when the admin adds new rules and compatibility options
+Add authentication
+Implement add to cart in frontend
 
 ## User Stories
 

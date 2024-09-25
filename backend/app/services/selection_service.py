@@ -70,5 +70,6 @@ class PartSelectionService(BaseSelectionService):
     def is_selection_valid(self) -> bool:
         return self.solver.check() == sat
 
-    def select_part_option(self, option: Option):
-        self.solver.add(self.option_vars[option.id] == option.id)
+    def select_part_options(self, options: list[Option]):
+        for option in options:
+            self.solver.add(self.option_vars[option.id] == option.id)

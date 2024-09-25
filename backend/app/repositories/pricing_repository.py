@@ -35,9 +35,6 @@ class PricingOrderRepository:
 
         return product
 
-    def get_options_by_ids(self, option_ids: list[int]):
-        return self.db.query(Option).filter(Option.id.in_(option_ids)).all()
-
     def get_price_rules(self, product_id: int):
         return self.db.query(PriceRule).filter(PriceRule.product_id == product_id).all()
 
@@ -50,9 +47,6 @@ class PricingOrderRepository:
             raise ValueError(f"Option not found: {option_id}")
 
         return option
-
-    def get_price_rule_by_option_id(self, option_id: Column[int]) -> List[PriceRule]:
-        return self.db.query(PriceRule).filter(PriceRule.option_id == option_id).all()
 
     def get_price_rules_by_option_ids(self, option_ids: list[int]) -> List[PriceRule]:
         return (
@@ -79,11 +73,16 @@ class PricingOrderRepository:
         self.db.refresh(order)
         return order
 
+    def get_parts(self, product_id: int) -> List[Part]:
+        return self.db.query(Part).filter(Part.product_id == product_id).all()
+
     def get_compatibilities(
-        self, option_ids: list[int]
+        self, product_id: int
     ) -> defaultdict[int, dict[str, list[int]]]:
         compatibilities = (
             self.db.query(OptionCompatibility)
+            .join(Part, Part.id == Option.part_id)
+            .filter(Option.in_stock, Part.product_id == product_id)
             .order_by(OptionCompatibility.option1_id)
             .all()
         )

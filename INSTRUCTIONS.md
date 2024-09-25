@@ -22,6 +22,10 @@ If you select "mountain wheels", then the only frame available is the full suspe
 If you select "fat bike wheels", then the red rim color is unavailable because the manufacturer doesn't provide it.
 
 
+Feature model para crear bicis, operaciones que validan los tipos de dato
+AST -> Abstract syntax tree
+
+
 Also, sometimes Marcus doesn't have all the possible variations of each part in stock, so he also wants to be able to mark them as "temporarily out of stock" to avoid incoming orders that he would not be able to fulfill.
 
 

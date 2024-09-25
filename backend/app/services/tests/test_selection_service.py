@@ -73,7 +73,7 @@ def repository(db_session):
 def test_load_compatibilities(selection_service, repository, db_session):
     parts = db_session.query(Part).all()
     options = db_session.query(Option).all()
-    grouped_compatibilities = repository.get_compatibilities(options)
+    grouped_compatibilities = repository.get_compatibilities(product_id=1)
 
     selection_service.load_compatibilities(parts, options, grouped_compatibilities)
 
@@ -83,7 +83,7 @@ def test_load_compatibilities(selection_service, repository, db_session):
 def test_get_available_options(selection_service, repository, db_session):
     parts = db_session.query(Part).all()
     options = db_session.query(Option).all()
-    grouped_compatibilities = repository.get_compatibilities(options)
+    grouped_compatibilities = repository.get_compatibilities(product_id=1)
 
     selection_service.load_compatibilities(parts, options, grouped_compatibilities)
     available_options = selection_service.get_available_options(parts)
@@ -96,7 +96,7 @@ def test_get_available_options(selection_service, repository, db_session):
 def test_is_selection_valid_returns_valid(selection_service, repository, db_session):
     parts = db_session.query(Part).all()
     options = db_session.query(Option).all()
-    grouped_compatibilities = repository.get_compatibilities(options)
+    grouped_compatibilities = repository.get_compatibilities(product_id=1)
 
     selection_service.load_compatibilities(parts, options, grouped_compatibilities)
 
@@ -111,12 +111,11 @@ def test_is_selection_valid_returns_invalid(
     full_suspension = db_session.query(Option).filter_by(name="Full-suspension").first()
     fat_wheels = db_session.query(Option).filter_by(id=5).first()
 
-    grouped_compatibilities = repository.get_compatibilities(options)
+    grouped_compatibilities = repository.get_compatibilities(product_id=1)
     selection_service.load_compatibilities(parts, options, grouped_compatibilities)
 
-    selection_service.select_part_option(full_suspension)
-    # Add incompatible option
-    selection_service.select_part_option(fat_wheels)
+    # Add incompatible options
+    selection_service.select_part_options([full_suspension, fat_wheels])
 
     assert not selection_service.is_selection_valid()
 
@@ -124,11 +123,11 @@ def test_is_selection_valid_returns_invalid(
 def test_select_part_option(selection_service, repository, db_session):
     parts = db_session.query(Part).all()
     options = db_session.query(Option).all()
-    grouped_compatibilities = repository.get_compatibilities(options)
+    grouped_compatibilities = repository.get_compatibilities(product_id=1)
 
     selection_service.load_compatibilities(parts, options, grouped_compatibilities)
 
     full_suspension = db_session.query(Option).filter_by(name="Full-suspension").first()
-    selection_service.select_part_option(full_suspension)
+    selection_service.select_part_options([full_suspension])
 
     assert selection_service.solver.check() == sat

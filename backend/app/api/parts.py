@@ -32,7 +32,7 @@ class PartList(BaseModel):
 
 
 @router.get("/parts", response_model=PartList)
-def read_parts(
+def get_parts(
     product_id: int = Query(..., description="ID of the product"),
     db: Session = Depends(get_db),
 ):

@@ -39,5 +39,5 @@ class BaseSelectionService(ABC):
         pass
 
     @abstractmethod
-    def select_part_option(self, option: Option):
+    def select_part_options(self, options: list[Option]):
         pass
