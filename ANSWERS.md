@@ -1,3 +1,11 @@
+## 0. Introduction
+
+I've decided to solve the problem using a relational database (PostgreSQL) and a Python/FastAPI backend. In the frontend I would go with Nextjs with a React framework.
+
+I have a long experience using this stack and I believe is the best stack for me to deliver a working solution in a reasonable time with a good architecture. I also think if this is a somewhat realistic scenario for a real case, this stack would be a good choice.
+
+Frontend and Backend would connect through an HTTP API, using JSON format for the data and JWT for the authentication. The frontend would control the session using the JWT through a cookie. We would separate authorization depending on the role (admin or customer) and the actions in the API. If needed we would store some temporal information in LocalStorage, always checking with backend for critical actions.
+
 ## 1. Data model:
 
 ![Screenshot 2024-09-25 at 21 39 21](https://github.com/user-attachments/assets/9428237b-af85-4968-8970-bed034cf8ca0)
