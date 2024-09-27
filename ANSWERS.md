@@ -60,11 +60,11 @@ The model is designed to be extensible, allowing Marcus to add new product types
 
 ## 2. Description of the main user actions:
 
-Two users, Owner and Customer. Not clear which would be the main user, so I'll put here the main actions for each user.
+Two users, Owner and Customer. Not clear which would be the "main" user, so I'll put here the main actions for each user.
 
 ### Owner
 
-The Owner will be able to create new products with its category, parts and options.
+The Owner will be able to create new products with its category, parts and options (see UI below).
 
 He will also be able to modify the compatibility of the options using the compatibility flag to fine tune the options, and the pricing rules for each option in the admin page.
 
@@ -78,9 +78,11 @@ He could browse through a category page to see the products in that category.
 
 Once He/She has selected the product, he will be able to see the different parts and options for that product and start configuring the product.
 
-After selecting all the parts for the product, the customer will be able to see the total final price for the product and add it to the cart. The customer will be able to see the total price for the product every time he/she selects an option for a part.
+When selecting an option for a part, the customer will be able to see some options are available, some are not, depending on their selection. They could also see the price for the option selected and the total price for the product.
 
-On the cart page, the customer will be able to see the products added to the cart and the total price for each product and the final price.
+After selecting all the parts for the product, the customer will be able to see the total final price for the product and add it to the cart. The customer will be able to see the total price for the product every time he/she selects an option for a part, but only when all parts are selected will be able to finish the order, which is "pending" since the moment they select the first option until they complete the order.
+
+On the cart page, the customer will be able to see the products added to the cart and the total price for each product and the final price, and they could complete the order and pay for it.
 
 ## 3. The product page:
 
@@ -135,9 +137,11 @@ We will show if a specific option has compatibility rules and/or price rules in 
 
 ## 6. The creation of a new product:
 
+UI With all the possible fields for the product.
+
 ![Screenshot 2024-09-26 at 20 44 04](https://github.com/user-attachments/assets/f46e62bb-1042-43ca-a6bb-536f8fa387ab)
 
-![Screenshot 2024-09-26 at 20 43 55](https://github.com/user-attachments/assets/d853be8f-963f-4aa3-a9ed-7ec4938d2d7e)
+UI without the rules and compatibility options, Option Compatibility and Price Rules are collapsed.
 
 ![Screenshot 2024-09-26 at 20 44 09](https://github.com/user-attachments/assets/bd0b08bb-78c5-4709-ab5a-759b6f771e3f)
 
